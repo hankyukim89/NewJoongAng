@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>관리자 대시보드 — 밴쿠버 중앙일보</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <!-- Quill rich text editor -->
+  <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    /* ---- Dashboard shell ---- */
+    .dash-header {
+      background: #111; color:#fff;
+      padding: 0 24px; height: 56px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top:0; z-index:200;
+      border-bottom: 3px solid #C8401A;
+    }
+    .dash-brand { font-weight:700; font-size:17px; display:flex; align-items:center; gap:10px; }
+    .dash-brand-sub { font-size:12px; color:rgba(255,255,255,.45); font-weight:400; }
+    .dash-nav { display:flex; align-items:center; gap:12px; }
+    .dash-nav a { font-size:13px; color:rgba(255,255,255,.6); text-decoration:none; transition:color .15s; }
+    .dash-nav a:hover { color:#fff; }
+    .btn-logout { background:rgba(255,255,255,.12); border:none; color:#fff; padding:6px 14px; border-radius:6px; font-size:13px; font-family:inherit; cursor:pointer; transition:background .15s; }
+    .btn-logout:hover { background:rgba(255,255,255,.2); }
+
+    body.admin-page { background:#F0F0F2; }
+    .dash-body { max-width:1200px; margin:0 auto; padding:28px 20px 80px; display:flex; flex-direction:column; gap:24px; }
+
+    /* ---- Stats ---- */
+    .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+    .stat-box { background:#fff; border:1px solid #e4e4e7; border-radius:10px; padding:18px 20px; }
+    .stat-num { font-size:30px; font-weight:700; color:#C8401A; line-height:1; }
+    .stat-label { font-size:12px; color:#888; margin-top:5px; }
+
+    /* ---- Section ---- */
+    .dash-section { background:#fff; border:1px solid #e4e4e7; border-radius:12px; overflow:hidden; }
+    .dash-section-hdr {
+      padding:16px 22px; border-bottom:1px solid #e4e4e7;
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      background:#fafafa;
+    }
+    .dash-section-title { font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px; }
+    .dash-section-title .dot { width:3px; height:16px; background:#C8401A; border-radius:2px; display:inline-block; }
+    .dash-section-body { padding:22px; }
+
+    /* ---- Form ---- */
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .form-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+    .form-full { grid-column:1/-1; }
+
+    .f-label { display:block; font-size:13px; font-weight:600; color:#333; margin-bottom:5px; }
+    .f-label .req { color:#C8401A; }
+    .f-input {
+      width:100%; padding:9px 12px; border:1.5px solid #e4e4e7; border-radius:7px;
+      font-size:14px; font-family:inherit; color:#111; background:#fafafa;
+      transition:border-color .15s; box-sizing:border-box;
+    }
+    .f-input:focus { outline:none; border-color:#C8401A; background:#fff; }
+    select.f-input { cursor:pointer; }
+
+    /* Image preview */
+    .img-preview-wrap { position:relative; }
+    .img-preview { margin-top:8px; width:100%; height:140px; object-fit:cover; border-radius:7px; border:1px solid #e4e4e7; display:none; }
+    .img-preview.show { display:block; }
+
+    /* Quill editor */
+    .ql-container.ql-snow { border-color:#e4e4e7; border-radius:0 0 7px 7px; font-family:inherit; font-size:15px; min-height:260px; }
+    .ql-toolbar.ql-snow { border-color:#e4e4e7; border-radius:7px 7px 0 0; background:#fafafa; }
+    .ql-editor { min-height:240px; line-height:1.8; }
+    .ql-editor p { margin-bottom:12px; }
+
+    /* Featured toggle */
+    .feat-label { display:flex; align-items:center; gap:8px; cursor:pointer; font-size:14px; color:#444; user-select:none; }
+    .feat-label input { accent-color:#C8401A; width:17px; height:17px; cursor:pointer; }
+
+    /* Editing mode indicator */
+    .edit-banner {
+      background:#FFF3CD; border:1px solid #FFCA2C; border-radius:8px;
+      padding:10px 16px; font-size:14px; color:#856404;
+      display:none; align-items:center; justify-content:space-between; gap:12px;
+      margin-bottom:16px;
+    }
+    .edit-banner.show { display:flex; }
+    .btn-cancel-edit { background:none; border:1px solid #856404; color:#856404; border-radius:6px; padding:5px 12px; font-size:13px; font-family:inherit; cursor:pointer; }
+
+    /* Form actions */
+    .form-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .btn-publish-art {
+      background:#C8401A; color:#fff; border:none;
+      padding:11px 28px; border-radius:8px; font-size:15px; font-weight:700;
+      font-family:inherit; cursor:pointer; transition:background .15s;
+    }
+    .btn-publish-art:hover { background:#9B2F10; }
+    .publish-feedback { font-size:14px; color:#1a8c6e; font-weight:500; display:none; }
+
+    /* ---- Article list toolbar ---- */
+    .list-toolbar {
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+      padding:14px 22px; border-bottom:1px solid #e4e4e7; background:#fafafa;
+    }
+    .list-search {
+      flex:1; min-width:180px; padding:8px 12px 8px 34px;
+      border:1.5px solid #e4e4e7; border-radius:7px; font-size:14px; font-family:inherit;
+      background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23aaa' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 10px center;
+      transition:border-color .15s;
+    }
+    .list-search:focus { outline:none; border-color:#C8401A; }
+    .list-cat-filter {
+      padding:8px 12px; border:1.5px solid #e4e4e7; border-radius:7px;
+      font-size:14px; font-family:inherit; background:#fff; cursor:pointer;
+    }
+    .list-cat-filter:focus { outline:none; border-color:#C8401A; }
+    .list-count { font-size:13px; color:#888; white-space:nowrap; margin-left:auto; }
+    .btn-reseed { background:none; border:1.5px solid #e4e4e7; color:#888; padding:7px 12px; border-radius:7px; font-size:12px; font-family:inherit; cursor:pointer; white-space:nowrap; }
+    .btn-reseed:hover { border-color:#C8401A; color:#C8401A; }
+
+    /* Table */
+    .art-table { width:100%; border-collapse:collapse; }
+    .art-table th {
+      padding:10px 14px; font-size:12px; font-weight:600; color:#888; text-align:left;
+      border-bottom:1px solid #e4e4e7; background:#fafafa; white-space:nowrap;
+    }
+    .art-table td { padding:13px 14px; border-bottom:1px solid #f0f0f0; font-size:14px; vertical-align:middle; }
+    .art-table tr:last-child td { border-bottom:none; }
+    .art-table tr:hover td { background:#fdf9f8; }
+
+    .t-thumb { width:56px; height:42px; object-fit:cover; border-radius:5px; display:block; background:#eee; flex-shrink:0; }
+    .t-thumb-grad { width:56px; height:42px; border-radius:5px; display:block; flex-shrink:0; }
+    .t-title-cell { display:flex; align-items:center; gap:10px; }
+    .t-title { font-weight:600; color:#111; font-size:14px; max-width:300px; }
+    .t-title a { color:inherit; text-decoration:none; }
+    .t-title a:hover { color:#C8401A; }
+    .t-sub { font-size:12px; color:#888; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:280px; }
+    .t-feat { background:#FFF3CD; color:#856404; border:1px solid #FFCA2C; padding:2px 7px; border-radius:3px; font-size:11px; font-weight:700; white-space:nowrap; }
+    .cat-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; flex-shrink:0; }
+    .t-cat { font-size:13px; font-weight:600; white-space:nowrap; display:flex; align-items:center; }
+    .t-author { font-size:13px; color:#444; white-space:nowrap; }
+    .t-date { font-size:12px; color:#888; white-space:nowrap; }
+    .t-actions { display:flex; gap:6px; white-space:nowrap; }
+    .btn-edit-art { background:none; border:1.5px solid #e4e4e7; color:#444; padding:5px 11px; border-radius:6px; font-size:12px; font-family:inherit; cursor:pointer; transition:all .15s; }
+    .btn-edit-art:hover { border-color:#1A6B9A; color:#1A6B9A; }
+    .btn-del-art { background:none; border:1.5px solid #e4e4e7; color:#c0392b; padding:5px 11px; border-radius:6px; font-size:12px; font-family:inherit; cursor:pointer; transition:all .15s; }
+    .btn-del-art:hover { background:#fdf3f2; border-color:#c0392b; }
+
+    .t-empty { text-align:center; padding:48px 20px; color:#888; font-size:15px; }
+
+    /* Pagination */
+    .list-pagination { display:flex; align-items:center; justify-content:center; gap:5px; padding:16px; flex-wrap:wrap; border-top:1px solid #e4e4e7; }
+    .lp-btn { min-width:34px; height:34px; padding:0 8px; border:1px solid #e4e4e7; border-radius:6px; font-size:13px; color:#444; background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; font-family:inherit; }
+    .lp-btn:hover { border-color:#C8401A; color:#C8401A; }
+    .lp-btn.active { background:#C8401A; color:#fff; border-color:#C8401A; font-weight:700; }
+    .lp-btn:disabled { opacity:.35; cursor:default; }
+
+    @media(max-width:900px) {
+      .stats-row { grid-template-columns:1fr 1fr; }
+      .form-grid, .form-grid-3 { grid-template-columns:1fr; }
+    }
+    @media(max-width:600px) {
+      .dash-body { padding:16px 12px 60px; }
+      .art-table th:nth-child(3),
+      .art-table td:nth-child(3),
+      .art-table th:nth-child(4),
+      .art-table td:nth-child(4) { display:none; }
+    }
+  </style>
+</head>
+<body class="admin-page">
+
+  <!-- Header -->
+  <header class="dash-header">
+    <div class="dash-brand">
+      밴쿠버 중앙일보
+      <span class="dash-brand-sub">관리자</span>
+    </div>
+    <nav class="dash-nav">
+      <a href="../index.html" target="_blank">사이트 보기 ↗</a>
+      <button class="btn-logout" onclick="doLogout()">로그아웃</button>
+    </nav>
+  </header>
+
+  <div class="dash-body">
+
+    <!-- Stats -->
+    <div class="stats-row" id="stats-row"></div>
+
+    <!-- Article form -->
+    <div class="dash-section">
+      <div class="dash-section-hdr">
+        <div class="dash-section-title"><span class="dot"></span><span id="form-section-label">새 기사 작성</span></div>
+      </div>
+      <div class="dash-section-body">
+
+        <div class="edit-banner" id="edit-banner">
+          <span>✏️ <strong id="edit-banner-title"></strong> 기사를 수정 중입니다</span>
+          <button class="btn-cancel-edit" onclick="cancelEdit()">취소</button>
+        </div>
+
+        <div class="form-grid" style="margin-bottom:12px">
+          <div class="form-full">
+            <label class="f-label">제목 <span class="req">*</span></label>
+            <input class="f-input" type="text" id="f-title" placeholder="기사 제목">
+          </div>
+          <div class="form-full">
+            <label class="f-label">부제목 / 요약</label>
+            <input class="f-input" type="text" id="f-subtitle" placeholder="한 줄 요약 (선택)">
+          </div>
+        </div>
+
+        <div class="form-grid-3" style="margin-bottom:12px">
+          <div>
+            <label class="f-label">작성자</label>
+            <input class="f-input" type="text" id="f-author" placeholder="예: 김민준 기자" value="편집부">
+          </div>
+          <div>
+            <label class="f-label">카테고리 <span class="req">*</span></label>
+            <select class="f-input" id="f-category">
+              <option value="">선택하세요</option>
+              <option value="지역">지역</option>
+              <option value="캐나다">캐나다</option>
+              <option value="이민">이민</option>
+              <option value="한국">한국</option>
+              <option value="생활">생활</option>
+            </select>
+          </div>
+          <div>
+            <label class="f-label">이미지 URL <span style="font-weight:400;color:#888">(선택)</span></label>
+            <div class="img-preview-wrap">
+              <input class="f-input" type="url" id="f-image" placeholder="https://..." oninput="previewImg(this.value)">
+              <img class="img-preview" id="img-preview-el" src="" alt="미리보기">
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:16px">
+          <label class="f-label">본문 <span class="req">*</span></label>
+          <div id="editor"></div>
+        </div>
+
+        <div class="form-actions">
+          <label class="feat-label">
+            <input type="checkbox" id="f-featured">
+            ⭐ 메인 헤드라인으로 설정
+          </label>
+          <button class="btn-publish-art" onclick="submitArticle()"><span id="submit-btn-text">기사 발행하기</span></button>
+          <span class="publish-feedback" id="pub-feedback">✅ 발행 완료!</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Article list -->
+    <div class="dash-section">
+      <div class="dash-section-hdr">
+        <div class="dash-section-title"><span class="dot"></span>기사 목록</div>
+        <button class="btn-reseed" onclick="confirmReseed()">샘플 초기화</button>
+      </div>
+
+      <div class="list-toolbar">
+        <input class="list-search" type="search" id="list-search" placeholder="제목·작성자 검색…" oninput="debounceSearch()">
+        <select class="list-cat-filter" id="list-cat" onchange="renderList()">
+          <option value="">전체 카테고리</option>
+          <option value="지역">지역</option>
+          <option value="캐나다">캐나다</option>
+          <option value="이민">이민</option>
+          <option value="한국">한국</option>
+          <option value="생활">생활</option>
+        </select>
+        <span class="list-count" id="list-count"></span>
+      </div>
+
+      <div style="overflow-x:auto">
+        <table class="art-table">
+          <thead>
+            <tr>
+              <th>기사</th>
+              <th>카테고리</th>
+              <th>작성자</th>
+              <th>작성일</th>
+              <th>작업</th>
+            </tr>
+          </thead>
+          <tbody id="art-tbody"></tbody>
+        </table>
+        <div class="t-empty" id="list-empty" style="display:none">검색 결과가 없습니다.</div>
+      </div>
+      <div class="list-pagination" id="list-pagination"></div>
+    </div>
+
+  </div><!-- /dash-body -->
+
+  <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+  <script src="../js/data.js"></script>
+  <script>
+    VJ.requireAdmin();
+
+    const PER   = 15; // articles per page in admin list
+    let listPage = 1;
+    let editingId = null;
+    let searchTimer = null;
+
+    /* ---- Quill ---- */
+    const quill = new Quill('#editor', {
+      theme: 'snow',
+      placeholder: '기사 본문을 입력하세요…',
+      modules: {
+        toolbar: [
+          [{ header: [2, 3, false] }],
+          ['bold', 'italic', 'underline'],
+          [{ list: 'ordered' }, { list: 'bullet' }],
+          ['blockquote', 'link'],
+          ['clean']
+        ]
+      }
+    });
+
+    /* ---- Image preview ---- */
+    function previewImg(url) {
+      const el = document.getElementById('img-preview-el');
+      if (!url) { el.classList.remove('show'); return; }
+      el.onload  = ()=> el.classList.add('show');
+      el.onerror = ()=> el.classList.remove('show');
+      el.src = url;
+    }
+
+    /* ---- Stats ---- */
+    function renderStats() {
+      const all     = VJ.getArticles();
+      const today   = all.filter(a=>Date.now()-new Date(a.createdAt)<86400000).length;
+      const cats    = new Set(all.map(a=>a.category)).size;
+      const featured= all.filter(a=>a.featured).length;
+      document.getElementById('stats-row').innerHTML = `
+        <div class="stat-box"><div class="stat-num">${all.length}</div><div class="stat-label">전체 기사</div></div>
+        <div class="stat-box"><div class="stat-num">${today}</div><div class="stat-label">오늘 발행</div></div>
+        <div class="stat-box"><div class="stat-num">${cats}</div><div class="stat-label">카테고리</div></div>
+        <div class="stat-box"><div class="stat-num">${featured}</div><div class="stat-label">헤드라인</div></div>`;
+    }
+
+    /* ---- Article list ---- */
+    function debounceSearch() {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(()=>{ listPage=1; renderList(); }, 280);
+    }
+
+    function renderList() {
+      const query = document.getElementById('list-search').value;
+      const cat   = document.getElementById('list-cat').value;
+      const all   = VJ.searchArticles(query, cat||'전체');
+      const pages = Math.ceil(all.length / PER) || 1;
+      if (listPage > pages) listPage = 1;
+
+      const slice = all.slice((listPage-1)*PER, listPage*PER);
+      document.getElementById('list-count').textContent = `총 ${all.length}건`;
+
+      const tbody = document.getElementById('art-tbody');
+      const empty = document.getElementById('list-empty');
+
+      if (!slice.length) {
+        tbody.innerHTML = '';
+        empty.style.display = 'block';
+      } else {
+        empty.style.display = 'none';
+        tbody.innerHTML = slice.map(a => {
+          const color = VJ.getCatColor(a.category);
+          const dateStr = new Date(a.createdAt).toLocaleDateString('ko-KR',{month:'short',day:'numeric'});
+          const thumb = a.imageUrl
+            ? `<img class="t-thumb" src="${VJ.escapeHtml(a.imageUrl)}" alt="">`
+            : `<div class="t-thumb-grad" style="background:linear-gradient(135deg,#1c3f5c,#2d7fa5)"></div>`;
+          return `<tr>
+            <td>
+              <div class="t-title-cell">
+                ${thumb}
+                <div>
+                  <div class="t-title">
+                    <a href="../article.html?id=${VJ.escapeHtml(a.id)}" target="_blank">${VJ.escapeHtml(a.title)}</a>
+                    ${a.featured?`<span class="t-feat" style="margin-left:6px">헤드라인</span>`:''}
+                  </div>
+                  ${a.subtitle?`<div class="t-sub">${VJ.escapeHtml(a.subtitle)}</div>`:''}
+                </div>
+              </div>
+            </td>
+            <td><span class="t-cat"><span class="cat-dot" style="background:${color}"></span>${VJ.escapeHtml(a.category)}</span></td>
+            <td class="t-author">${VJ.escapeHtml(a.author||'—')}</td>
+            <td class="t-date">${dateStr}</td>
+            <td>
+              <div class="t-actions">
+                <button class="btn-edit-art" onclick="startEdit('${VJ.escapeHtml(a.id)}')">수정</button>
+                <button class="btn-del-art"  onclick="deleteArt('${VJ.escapeHtml(a.id)}',this)">삭제</button>
+              </div>
+            </td>
+          </tr>`;
+        }).join('');
+      }
+
+      renderListPagination(pages);
+    }
+
+    function renderListPagination(pages) {
+      const el = document.getElementById('list-pagination');
+      if (pages<=1) { el.innerHTML=''; return; }
+      let html = `<button class="lp-btn" onclick="goListPage(${listPage-1})" ${listPage===1?'disabled':''}>‹</button>`;
+      const range=[];
+      for(let i=1;i<=pages;i++){
+        if(i===1||i===pages||(i>=listPage-2&&i<=listPage+2))range.push(i);
+        else if(range[range.length-1]!=='…')range.push('…');
+      }
+      range.forEach(p=>{
+        if(p==='…') html+=`<span class="lp-btn" style="cursor:default;border:none">…</span>`;
+        else html+=`<button class="lp-btn ${p===listPage?'active':''}" onclick="goListPage(${p})">${p}</button>`;
+      });
+      html+=`<button class="lp-btn" onclick="goListPage(${listPage+1})" ${listPage===pages?'disabled':''}>›</button>`;
+      el.innerHTML=html;
+    }
+
+    function goListPage(p) { listPage=p; renderList(); document.getElementById('art-tbody').scrollIntoView({behavior:'smooth',block:'start'}); }
+
+    /* ---- Edit article ---- */
+    function startEdit(id) {
+      const a = VJ.getArticle(id);
+      if (!a) return;
+      editingId = id;
+      document.getElementById('f-title').value    = a.title    || '';
+      document.getElementById('f-subtitle').value = a.subtitle || '';
+      document.getElementById('f-author').value   = a.author   || '';
+      document.getElementById('f-category').value = a.category || '';
+      document.getElementById('f-image').value    = a.imageUrl || '';
+      document.getElementById('f-featured').checked = !!a.featured;
+      previewImg(a.imageUrl);
+
+      // Load content into Quill
+      const html = VJ.renderContent(a.content);
+      quill.root.innerHTML = html;
+
+      // UI
+      document.getElementById('form-section-label').textContent = '기사 수정';
+      document.getElementById('submit-btn-text').textContent    = '수정 완료';
+      const banner = document.getElementById('edit-banner');
+      banner.classList.add('show');
+      document.getElementById('edit-banner-title').textContent = a.title.slice(0,30)+(a.title.length>30?'…':'');
+
+      document.querySelector('.dash-section').scrollIntoView({behavior:'smooth',block:'start'});
+    }
+
+    function cancelEdit() {
+      editingId = null;
+      resetForm();
+    }
+
+    function resetForm() {
+      document.getElementById('f-title').value    = '';
+      document.getElementById('f-subtitle').value = '';
+      document.getElementById('f-author').value   = '편집부';
+      document.getElementById('f-category').value = '';
+      document.getElementById('f-image').value    = '';
+      document.getElementById('f-featured').checked = false;
+      document.getElementById('img-preview-el').classList.remove('show');
+      quill.setContents([]);
+      document.getElementById('form-section-label').textContent = '새 기사 작성';
+      document.getElementById('submit-btn-text').textContent    = '기사 발행하기';
+      document.getElementById('edit-banner').classList.remove('show');
+    }
+
+    /* ---- Submit / Publish ---- */
+    function submitArticle() {
+      const title    = document.getElementById('f-title').value.trim();
+      const subtitle = document.getElementById('f-subtitle').value.trim();
+      const author   = document.getElementById('f-author').value.trim();
+      const category = document.getElementById('f-category').value;
+      const imageUrl = document.getElementById('f-image').value.trim();
+      const featured = document.getElementById('f-featured').checked;
+      const content  = quill.root.innerHTML.trim();
+      const isEmpty  = quill.getText().trim() === '';
+
+      if (!title)    { alert('제목을 입력해주세요.'); document.getElementById('f-title').focus(); return; }
+      if (!category) { alert('카테고리를 선택해주세요.'); document.getElementById('f-category').focus(); return; }
+      if (isEmpty)   { alert('본문을 입력해주세요.'); quill.focus(); return; }
+
+      // If featured, unfeatured others
+      if (featured) {
+        VJ.getArticles().forEach(a=>{
+          if(a.featured&&a.id!==editingId){ a.featured=false; VJ.saveArticle(a); }
+        });
+      }
+
+      const article = {
+        id:        editingId || Date.now().toString(),
+        title, subtitle,
+        author:    author || '편집부',
+        category, content, imageUrl, featured,
+        createdAt: editingId ? VJ.getArticle(editingId).createdAt : new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      VJ.saveArticle(article);
+      const isEdit = !!editingId;
+      resetForm();
+
+      const fb = document.getElementById('pub-feedback');
+      fb.textContent = isEdit ? '✅ 수정 완료!' : '✅ 발행 완료!';
+      fb.style.display='inline';
+      setTimeout(()=>fb.style.display='none', 4000);
+
+      renderStats();
+      renderList();
+      if (!isEdit) document.getElementById('art-tbody').parentElement.scrollIntoView({behavior:'smooth'});
+    }
+
+    /* ---- Delete ---- */
+    function deleteArt(id, btn) {
+      const a = VJ.getArticle(id);
+      if (!a) return;
+      if (!confirm(`"${a.title}"\n\n이 기사를 삭제할까요? 되돌릴 수 없습니다.`)) return;
+      btn.disabled=true; btn.textContent='…';
+      VJ.deleteArticle(id);
+      if(editingId===id) cancelEdit();
+      renderStats(); renderList();
+    }
+
+    /* ---- Reseed ---- */
+    function confirmReseed() {
+      if(!confirm('모든 기사를 삭제하고 샘플 기사로 초기화하시겠습니까?')) return;
+      VJ.clearAndReseed(); renderStats(); renderList();
+    }
+
+    /* ---- Logout ---- */
+    function doLogout() { VJ.logout(); window.location.href='login.html'; }
+
+    /* ---- Init ---- */
+    renderStats();
+    renderList();
+  </script>
+</body>
+</html>

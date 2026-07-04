@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>밴쿠버 중앙일보 — Vancouver Joongang Ilbo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Ticker -->
+  <div class="ticker" id="ticker">
+    <span class="ticker-label"><span class="live-dot"></span>속보</span>
+    <div class="ticker-track">
+      <span class="ticker-text" id="ticker-text">밴쿠버 중앙일보</span>
+    </div>
+    <button class="ticker-close" onclick="document.getElementById('ticker').style.display='none'" aria-label="닫기">✕</button>
+  </div>
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="index.html" class="site-logo">
+        <span class="logo-ko">밴쿠버 중앙일보</span>
+        <span class="logo-en">Vancouver Joongang Ilbo</span>
+      </a>
+      <div class="header-right">
+        <div id="user-nav" style="display:flex;align-items:center;gap:8px">
+          <button class="btn-ghost" onclick="openAuthModal('login')">로그인</button>
+          <button class="btn-primary" onclick="openAuthModal('register')">회원가입</button>
+        </div>
+        <div id="user-nav-loggedin" style="display:none;align-items:center;gap:10px">
+          <span id="user-greeting" style="font-size:13px;color:var(--text2)"></span>
+          <button class="btn-ghost" onclick="doUserLogout()">로그아웃</button>
+        </div>
+        <a href="admin/login.html" class="btn-ghost" style="font-size:12px;opacity:.6">관리자</a>
+      </div>
+    </div>
+    <nav class="cat-nav" aria-label="카테고리">
+      <div class="cat-nav-inner" id="cat-nav">
+        <button class="cat-link active" data-cat="전체" onclick="filterCat(this)">전체</button>
+        <button class="cat-link" data-cat="지역" onclick="filterCat(this)">지역</button>
+        <button class="cat-link" data-cat="캐나다" onclick="filterCat(this)">캐나다</button>
+        <button class="cat-link" data-cat="이민" onclick="filterCat(this)">이민</button>
+        <button class="cat-link" data-cat="한국" onclick="filterCat(this)">한국</button>
+        <button class="cat-link" data-cat="생활" onclick="filterCat(this)">생활</button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Hero -->
+  <div class="hero-section" id="hero-wrap"></div>
+
+  <!-- Ad -->
+  <div class="ad-slot">
+    <p class="ad-label">광고</p>
+    <div class="ad-mock">Google AdSense — 상단 배너 (728×90) · 구독자에게 미표시</div>
+  </div>
+
+  <!-- Main content + sidebar -->
+  <div class="content-wrap">
+    <section class="feed-col">
+      <div class="section-hdr">
+        <h2 class="section-title"><span class="accent-bar"></span><span id="feed-label">최신 뉴스</span></h2>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span id="feed-count" style="font-size:13px;color:var(--text3)"></span>
+          <div style="position:relative">
+            <svg style="position:absolute;left:9px;top:50%;transform:translateY(-50%);opacity:.4;pointer-events:none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="search" id="search-input" placeholder="기사 검색…"
+              style="padding:7px 12px 7px 30px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;outline:none;width:180px;transition:border-color .15s,width .2s;box-sizing:border-box"
+              oninput="handleSearch(this.value)"
+              onfocus="this.style.borderColor='var(--brand)';this.style.width='240px'"
+              onblur="this.style.borderColor='var(--border)';this.style.width='180px'">
+          </div>
+        </div>
+      </div>
+      <div id="article-feed"></div>
+      <div id="pagination" class="pagination"></div>
+    </section>
+
+    <aside class="sidebar">
+      <div class="sidebar-widget sub-widget">
+        <div class="widget-inner">
+          <p class="sub-title">광고 없이 읽기</p>
+          <p class="sub-price">월 <strong>$7.99</strong> · 언제든 취소</p>
+          <a href="#subscribe" class="btn-sub">구독 시작하기</a>
+        </div>
+      </div>
+
+      <div class="sidebar-widget" style="padding:14px">
+        <p class="ad-label" style="text-align:center">광고</p>
+        <div class="ad-mock" style="height:240px">사이드바 (300×250)</div>
+      </div>
+
+      <div class="sidebar-widget">
+        <div class="widget-inner">
+          <h3 class="widget-title"><span class="accent-bar"></span>인기 기사</h3>
+          <div id="popular-list"></div>
+        </div>
+      </div>
+
+      <div class="sidebar-widget">
+        <div class="widget-inner">
+          <h3 class="widget-title"><span class="accent-bar"></span>카테고리</h3>
+          <div class="tag-cloud" id="tag-cloud"></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Subscribe CTA -->
+  <div class="sub-cta" id="subscribe">
+    <div class="sub-cta-inner">
+      <div class="sub-cta-text">
+        <strong>광고 없이 밴쿠버 중앙일보를 읽으세요</strong>
+        <span>월 $7.99 · 모든 기사 무제한 · 언제든 취소 가능</span>
+      </div>
+      <a href="#" class="btn-sub-cta">지금 구독하기 →</a>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-top">
+        <div>
+          <span class="footer-logo-ko">밴쿠버 중앙일보</span>
+          <span class="footer-logo-en">Vancouver Joongang Ilbo</span>
+          <p class="footer-desc">밴쿠버 한인 커뮤니티를 위한 가장 빠른 뉴스</p>
+        </div>
+        <nav class="footer-nav">
+          <a href="index.html">홈</a>
+          <a href="about.html">소개</a>
+          <a href="contact.html">광고문의</a>
+          <a href="privacy.html">개인정보처리방침</a>
+          <a href="admin/login.html">관리자</a>
+        </nav>
+      </div>
+      <p class="footer-copy">© 2026 밴쿠버 중앙일보. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <!-- Mobile bottom nav -->
+  <nav class="bottom-nav">
+    <a href="index.html" class="bnav-item active">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>홈</span>
+    </a>
+    <button class="bnav-item" onclick="filterCatByName('지역')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 00-8 8c0 5.25 8 13 8 13s8-7.75 8-13a8 8 0 00-8-8z"/></svg>
+      <span>지역</span>
+    </button>
+    <button class="bnav-item" onclick="filterCatByName('이민')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+      <span>이민</span>
+    </button>
+    <a href="#subscribe" class="bnav-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>구독</span>
+    </a>
+  </nav>
+
+  <!-- Auth Modal -->
+  <div id="auth-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.55);align-items:center;justify-content:center;padding:20px">
+    <div style="background:#fff;border-radius:14px;width:100%;max-width:400px;padding:32px 28px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+      <button onclick="closeAuthModal()" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:#888;line-height:1">✕</button>
+
+      <!-- Login form -->
+      <div id="modal-login">
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:4px">로그인</h2>
+        <p style="font-size:13px;color:var(--text3);margin-bottom:20px">밴쿠버 중앙일보에 오신 걸 환영합니다</p>
+        <div style="margin-bottom:12px">
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">이메일</label>
+          <input id="li-email" type="email" placeholder="email@example.com"
+            style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;font-family:inherit;box-sizing:border-box"
+            onfocus="this.style.borderColor='var(--brand)'" onblur="this.style.borderColor='var(--border)'">
+        </div>
+        <div style="margin-bottom:18px">
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">비밀번호</label>
+          <input id="li-pw" type="password" placeholder="••••••••"
+            style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;font-family:inherit;box-sizing:border-box"
+            onfocus="this.style.borderColor='var(--brand)'" onblur="this.style.borderColor='var(--border)'"
+            onkeydown="if(event.key==='Enter')submitLogin()">
+        </div>
+        <p id="li-err" style="font-size:13px;color:#c00;margin-bottom:12px;display:none"></p>
+        <button onclick="submitLogin()"
+          style="width:100%;background:var(--brand);color:#fff;border:none;padding:12px;border-radius:8px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer">
+          로그인
+        </button>
+        <p style="text-align:center;font-size:13px;color:var(--text3);margin-top:16px">
+          계정이 없으신가요? <a href="#" onclick="switchModal('register');return false" style="color:var(--brand);font-weight:600">회원가입</a>
+        </p>
+      </div>
+
+      <!-- Register form -->
+      <div id="modal-register" style="display:none">
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:4px">회원가입</h2>
+        <p style="font-size:13px;color:var(--text3);margin-bottom:20px">무료로 가입하고 댓글을 달아보세요</p>
+        <div style="margin-bottom:12px">
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">이름 (닉네임)</label>
+          <input id="rg-name" type="text" placeholder="홍길동"
+            style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;font-family:inherit;box-sizing:border-box"
+            onfocus="this.style.borderColor='var(--brand)'" onblur="this.style.borderColor='var(--border)'">
+        </div>
+        <div style="margin-bottom:12px">
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">이메일</label>
+          <input id="rg-email" type="email" placeholder="email@example.com"
+            style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;font-family:inherit;box-sizing:border-box"
+            onfocus="this.style.borderColor='var(--brand)'" onblur="this.style.borderColor='var(--border)'">
+        </div>
+        <div style="margin-bottom:18px">
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">비밀번호</label>
+          <input id="rg-pw" type="password" placeholder="8자 이상"
+            style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;font-family:inherit;box-sizing:border-box"
+            onfocus="this.style.borderColor='var(--brand)'" onblur="this.style.borderColor='var(--border)'"
+            onkeydown="if(event.key==='Enter')submitRegister()">
+        </div>
+        <p id="rg-err" style="font-size:13px;color:#c00;margin-bottom:12px;display:none"></p>
+        <button onclick="submitRegister()"
+          style="width:100%;background:var(--brand);color:#fff;border:none;padding:12px;border-radius:8px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer">
+          가입하기
+        </button>
+        <p style="text-align:center;font-size:13px;color:var(--text3);margin-top:16px">
+          이미 계정이 있으신가요? <a href="#" onclick="switchModal('login');return false" style="color:var(--brand);font-weight:600">로그인</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script>
+    const PER_PAGE = 6;
+    let currentCat    = '전체';
+    let currentPage   = 1;
+    let searchQuery   = '';
+    let searchTimer   = null;
+
+    /* ---- Gradients fallback ---- */
+    const GRADS = [
+      'linear-gradient(135deg,#1c3f5c,#2d7fa5)',
+      'linear-gradient(135deg,#1a5c3c,#2d9e70)',
+      'linear-gradient(135deg,#5c2a1a,#a05030)',
+      'linear-gradient(135deg,#1a2c5c,#2d5aa0)',
+      'linear-gradient(135deg,#3c1a5c,#7030a0)',
+      'linear-gradient(135deg,#1a4c4c,#2d8c8c)'
+    ];
+    function gradFor(id) {
+      const n = String(id).split('').reduce((s,c)=>s+c.charCodeAt(0),0);
+      return GRADS[n % GRADS.length];
+    }
+    function thumbHtml(a, cls) {
+      if (a.imageUrl) return `<img src="${VJ.escapeHtml(a.imageUrl)}" alt="${VJ.escapeHtml(a.title)}" class="${cls}" loading="lazy">`;
+      return `<div class="${cls}" style="background:${gradFor(a.id)}"></div>`;
+    }
+
+    /* ---- Hero ---- */
+    function renderHero(all) {
+      const top = all.slice(0, 3);
+      if (!top.length) { document.getElementById('hero-wrap').innerHTML=''; return; }
+      const [main, s1, s2] = top;
+      const mainColor = VJ.getCatColor(main.category);
+
+      document.getElementById('hero-wrap').innerHTML = `
+        <div class="hero-section">
+          <div class="hero-grid">
+
+            <!-- Main feature -->
+            <div class="hero-main">
+              ${main.imageUrl
+                ? `<img src="${VJ.escapeHtml(main.imageUrl)}" alt="${VJ.escapeHtml(main.title)}" class="hero-img">`
+                : `<div class="hero-img" style="background:${gradFor(main.id)}"></div>`}
+              <div class="hero-overlay"></div>
+              <div class="hero-content">
+                <span class="hero-badge ${main.featured?'breaking':'cat'}">${main.featured?'<span class="live-dot"></span> 속보':VJ.escapeHtml(main.category)}</span>
+                <div class="hero-title">${VJ.escapeHtml(main.title)}</div>
+                <div class="hero-meta">
+                  <span>${VJ.escapeHtml(main.category)}</span>
+                  <span class="meta-dot">·</span>
+                  <span>${VJ.timeAgo(main.createdAt)}</span>
+                  <span class="meta-dot">·</span>
+                  <span>${VJ.escapeHtml(main.author)}</span>
+                </div>
+              </div>
+              <a href="article.html?id=${VJ.escapeHtml(main.id)}" class="hero-link" aria-label="${VJ.escapeHtml(main.title)}"></a>
+            </div>
+
+            ${top.slice(1).map(a => `
+            <div class="hero-sub">
+              ${a.imageUrl
+                ? `<img src="${VJ.escapeHtml(a.imageUrl)}" alt="${VJ.escapeHtml(a.title)}" class="hero-img">`
+                : `<div class="hero-img" style="background:${gradFor(a.id)}"></div>`}
+              <div class="hero-overlay"></div>
+              <div class="hero-content">
+                <span class="hero-badge cat">${VJ.escapeHtml(a.category)}</span>
+                <div class="hero-title">${VJ.escapeHtml(a.title)}</div>
+                <div class="hero-meta"><span>${VJ.timeAgo(a.createdAt)}</span></div>
+              </div>
+              <a href="article.html?id=${VJ.escapeHtml(a.id)}" class="hero-link" aria-label="${VJ.escapeHtml(a.title)}"></a>
+            </div>`).join('')}
+
+          </div>
+        </div>`;
+    }
+
+    /* ---- Search ---- */
+    function handleSearch(val) {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        searchQuery = val.trim();
+        currentPage = 1;
+        renderFeed(VJ.getArticles());
+      }, 280);
+    }
+
+    /* ---- Feed ---- */
+    function renderFeed(all) {
+      const filtered = searchQuery
+        ? VJ.searchArticles(searchQuery, currentCat)
+        : (currentCat === '전체' ? all : all.filter(a => a.category === currentCat));
+      const total    = filtered.length;
+      const pages    = Math.ceil(total / PER_PAGE);
+      if (currentPage > pages) currentPage = 1;
+
+      const slice = filtered.slice((currentPage-1)*PER_PAGE, currentPage*PER_PAGE);
+
+      // Label + count
+      document.getElementById('feed-label').textContent = searchQuery
+        ? `"${searchQuery}" 검색 결과`
+        : (currentCat === '전체' ? '최신 뉴스' : currentCat);
+      document.getElementById('feed-count').textContent = total > 0 ? `총 ${total}건` : '';
+
+      const feed = document.getElementById('article-feed');
+      if (!slice.length) {
+        feed.innerHTML = `<div class="no-articles">이 카테고리에 기사가 없습니다.</div>`;
+        document.getElementById('pagination').innerHTML = '';
+        return;
+      }
+
+      // Build card grid — insert ad after 4th card
+      let html = '<div class="card-grid">';
+      slice.forEach((a, i) => {
+        if (i === 4) {
+          html += `</div>
+          <div class="card-grid-ad ad-slot" style="border-radius:0;border-left:none;border-right:none">
+            <p class="ad-label">광고</p>
+            <div class="ad-mock">Google AdSense — 기사 중간 배너</div>
+          </div>
+          <div class="card-grid">`;
+        }
+        html += `
+          <article class="article-card">
+            <a href="article.html?id=${VJ.escapeHtml(a.id)}" class="article-card-link">
+              <div class="card-thumb">
+                ${a.imageUrl
+                  ? `<img src="${VJ.escapeHtml(a.imageUrl)}" alt="${VJ.escapeHtml(a.title)}" loading="lazy">`
+                  : `<div class="card-thumb-gradient" style="background:${gradFor(a.id)}"></div>`}
+              </div>
+              <div class="card-body">
+                <span class="card-cat" style="color:${VJ.getCatColor(a.category)}">${VJ.escapeHtml(a.category)}</span>
+                <h3 class="card-title">${VJ.escapeHtml(a.title)}</h3>
+                ${a.subtitle ? `<p class="card-subtitle">${VJ.escapeHtml(a.subtitle)}</p>` : ''}
+                <div class="card-meta">
+                  <span>${VJ.timeAgo(a.createdAt)}</span>
+                  <span class="meta-dot">·</span>
+                  <span>${VJ.escapeHtml(a.author)}</span>
+                </div>
+              </div>
+            </a>
+          </article>`;
+      });
+      html += '</div>';
+      feed.innerHTML = html;
+
+      renderPagination(pages);
+    }
+
+    /* ---- Pagination ---- */
+    function renderPagination(pages) {
+      const el = document.getElementById('pagination');
+      if (pages <= 1) { el.innerHTML=''; return; }
+
+      let html = '';
+      // Prev
+      html += `<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹ 이전</button>`;
+
+      // Page numbers (show up to 7, with ellipsis)
+      const range = [];
+      for (let i=1; i<=pages; i++) {
+        if (i===1 || i===pages || (i>=currentPage-2 && i<=currentPage+2)) range.push(i);
+        else if (range[range.length-1] !== '…') range.push('…');
+      }
+      range.forEach(p => {
+        if (p==='…') html += `<span class="page-btn" style="cursor:default;border:none">…</span>`;
+        else html += `<button class="page-btn ${p===currentPage?'active':''}" onclick="goPage(${p})">${p}</button>`;
+      });
+
+      // Next
+      html += `<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===pages?'disabled':''}>다음 ›</button>`;
+      el.innerHTML = html;
+    }
+
+    function goPage(p) {
+      currentPage = p;
+      renderFeed(VJ.getArticles());
+      window.scrollTo({ top: document.querySelector('.content-wrap').offsetTop - 80, behavior: 'smooth' });
+    }
+
+    /* ---- Sidebar popular ---- */
+    function renderPopular(all) {
+      document.getElementById('popular-list').innerHTML = all.slice(0, 6).map((a, i) => `
+        <a href="article.html?id=${VJ.escapeHtml(a.id)}" class="sidebar-art">
+          <span class="s-num">${i+1}</span>
+          <div class="s-body">
+            <span class="s-cat" style="color:${VJ.getCatColor(a.category)}">${VJ.escapeHtml(a.category)}</span>
+            <span class="s-title">${VJ.escapeHtml(a.title)}</span>
+            <span class="s-date">${VJ.timeAgo(a.createdAt)}</span>
+          </div>
+        </a>`).join('');
+    }
+
+    /* ---- Tag cloud ---- */
+    function renderTags() {
+      document.getElementById('tag-cloud').innerHTML = VJ.getCategories().map(cat => `
+        <button class="tag-pill" onclick="filterCatByName('${cat}')" style="font-size:12px">${cat}</button>`).join('');
+    }
+
+    /* ---- Ticker ---- */
+    function renderTicker(all) {
+      const el = document.getElementById('ticker-text');
+      if (all.length) el.textContent = all.slice(0, 6).map(a => a.title).join('   ·   ');
+    }
+
+    /* ---- Filter ---- */
+    function filterCat(btn) {
+      document.querySelectorAll('.cat-link').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentCat  = btn.getAttribute('data-cat');
+      currentPage = 1;
+      renderFeed(VJ.getArticles());
+    }
+    function filterCatByName(cat) {
+      const btn = document.querySelector(`.cat-link[data-cat="${cat}"]`);
+      if (btn) filterCat(btn);
+      else { currentCat = cat; currentPage = 1; renderFeed(VJ.getArticles()); }
+    }
+
+    /* ---- User Auth UI ---- */
+    function updateUserNav() {
+      const u = VJ.getCurrentUser();
+      document.getElementById('user-nav').style.display          = u ? 'none' : 'flex';
+      document.getElementById('user-nav').style.gap              = '8px';
+      document.getElementById('user-nav').style.alignItems       = 'center';
+      document.getElementById('user-nav-loggedin').style.display = u ? 'flex' : 'none';
+      if (u) document.getElementById('user-greeting').textContent = u.name + '님';
+    }
+    function openAuthModal(mode) {
+      switchModal(mode);
+      document.getElementById('auth-modal').style.display = 'flex';
+    }
+    function closeAuthModal() {
+      document.getElementById('auth-modal').style.display = 'none';
+      document.getElementById('li-err').style.display = 'none';
+      document.getElementById('rg-err').style.display = 'none';
+    }
+    function switchModal(mode) {
+      document.getElementById('modal-login').style.display    = mode==='login'    ? 'block' : 'none';
+      document.getElementById('modal-register').style.display = mode==='register' ? 'block' : 'none';
+    }
+    function submitLogin() {
+      const email = document.getElementById('li-email').value.trim();
+      const pw    = document.getElementById('li-pw').value;
+      const err   = document.getElementById('li-err');
+      if (!email||!pw) { err.textContent='이메일과 비밀번호를 입력해주세요.'; err.style.display='block'; return; }
+      const r = VJ.userLogin(email, pw);
+      if (!r.ok) { err.textContent=r.msg; err.style.display='block'; return; }
+      closeAuthModal();
+      updateUserNav();
+    }
+    function submitRegister() {
+      const name  = document.getElementById('rg-name').value.trim();
+      const email = document.getElementById('rg-email').value.trim();
+      const pw    = document.getElementById('rg-pw').value;
+      const err   = document.getElementById('rg-err');
+      if (!name||!email||!pw) { err.textContent='모든 항목을 입력해주세요.'; err.style.display='block'; return; }
+      if (pw.length < 8) { err.textContent='비밀번호는 8자 이상이어야 합니다.'; err.style.display='block'; return; }
+      const r = VJ.userRegister(name, email, pw);
+      if (!r.ok) { err.textContent=r.msg; err.style.display='block'; return; }
+      closeAuthModal();
+      updateUserNav();
+    }
+    function doUserLogout() {
+      VJ.userLogout();
+      updateUserNav();
+    }
+    document.getElementById('auth-modal').addEventListener('click', function(e){
+      if (e.target===this) closeAuthModal();
+    });
+
+    /* ---- Init ---- */
+    (function init() {
+      const all = VJ.getArticles();
+      renderTicker(all);
+      renderHero(all);
+      renderFeed(all);
+      renderPopular(all);
+      renderTags();
+      updateUserNav();
+    })();
+  </script>
+</body>
+</html>

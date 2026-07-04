@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>기사 — 밴쿠버 중앙일보</title>
+  <meta name="description" content="밴쿠버 중앙일보 — 밴쿠버 한인 커뮤니티 뉴스">
+  <meta property="og:site_name" content="밴쿠버 중앙일보">
+  <meta property="og:type" content="article">
+  <meta property="og:title" id="og-title" content="밴쿠버 중앙일보">
+  <meta property="og:description" id="og-desc" content="">
+  <meta property="og:image" id="og-img" content="">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Quill content styles inside post-body */
+    .post-body h2 { font-size:22px; font-weight:700; margin:32px 0 14px; color:var(--text); }
+    .post-body h3 { font-size:19px; font-weight:700; margin:24px 0 10px; color:var(--text); }
+    .post-body p  { margin-bottom:18px; }
+    .post-body ul, .post-body ol { padding-left:22px; margin-bottom:18px; }
+    .post-body li { margin-bottom:6px; line-height:1.8; }
+    .post-body blockquote { border-left:3px solid var(--brand); margin:24px 0; padding:12px 18px; background:var(--brand-light); border-radius:0 8px 8px 0; font-size:16px; color:var(--text2); }
+    .post-body a { color:var(--brand); text-decoration:underline; text-underline-offset:3px; }
+    .post-body strong { font-weight:700; }
+    .post-body em { font-style:italic; }
+    .read-time { display:inline-flex; align-items:center; gap:4px; }
+    .read-time svg { opacity:.6; }
+  </style>
+</head>
+<body>
+
+  <!-- Ticker -->
+  <div class="ticker" id="ticker">
+    <span class="ticker-label"><span class="live-dot"></span>속보</span>
+    <div class="ticker-track"><span class="ticker-text" id="ticker-text">밴쿠버 중앙일보</span></div>
+    <button class="ticker-close" onclick="document.getElementById('ticker').style.display='none'">✕</button>
+  </div>
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="index.html" class="site-logo">
+        <span class="logo-ko">밴쿠버 중앙일보</span>
+        <span class="logo-en">Vancouver Joongang Ilbo</span>
+      </a>
+      <div class="header-right">
+        <a href="index.html" class="btn-ghost">← 홈</a>
+        <div id="user-nav">
+          <button class="btn-ghost" onclick="openAuthModal('login')">로그인</button>
+          <button class="btn-primary" onclick="openAuthModal('register')">회원가입</button>
+        </div>
+        <div id="user-nav-loggedin" style="display:none;align-items:center;gap:10px">
+          <span id="user-greeting" style="font-size:13px;color:var(--text2)"></span>
+          <button class="btn-ghost" onclick="doUserLogout()">로그아웃</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Article layout -->
+  <div class="post-wrap" id="post-wrap">
+    <div style="padding:60px 20px;text-align:center;color:var(--text3)">기사를 불러오는 중…</div>
+  </div>
+
+  <!-- Comments -->
+  <div class="comments-section" id="comments">
+    <div class="comments-inner">
+      <h2 class="comments-title"><span class="accent-bar"></span>댓글 <span id="comment-count">0</span>개</h2>
+      <div class="comment-form">
+        <input type="text" class="comment-name" id="comment-name" placeholder="닉네임 (선택, 미입력 시 익명)">
+        <textarea class="comment-input" id="comment-text" rows="3" placeholder="댓글을 남겨주세요… (Ctrl+Enter로 등록)"></textarea>
+        <button class="btn-comment" onclick="submitComment()">등록하기</button>
+      </div>
+      <div id="comment-list"></div>
+    </div>
+  </div>
+
+  <!-- Related -->
+  <div class="related-section" id="related-wrap" style="display:none">
+    <div class="related-inner">
+      <h2 class="section-title"><span class="accent-bar"></span>관련 기사</h2>
+      <div class="related-grid" id="related-list"></div>
+    </div>
+  </div>
+
+  <!-- Subscribe CTA -->
+  <div class="sub-cta" id="subscribe">
+    <div class="sub-cta-inner">
+      <div class="sub-cta-text">
+        <strong>광고 없이 밴쿠버 중앙일보를 읽으세요</strong>
+        <span>월 $7.99 · 모든 기사 무제한 · 언제든 취소 가능</span>
+      </div>
+      <a href="#" class="btn-sub-cta">지금 구독하기 →</a>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-top">
+        <div>
+          <span class="footer-logo-ko">밴쿠버 중앙일보</span>
+          <span class="footer-logo-en">Vancouver Joongang Ilbo</span>
+          <p class="footer-desc">밴쿠버 한인 커뮤니티를 위한 가장 빠른 뉴스</p>
+        </div>
+        <nav class="footer-nav">
+          <a href="index.html">홈</a>
+          <a href="#">소개</a>
+          <a href="#">광고문의</a>
+          <a href="admin/login.html">관리자</a>
+        </nav>
+      </div>
+      <p class="footer-copy">© 2026 밴쿠버 중앙일보. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <!-- Mobile nav -->
+  <nav class="bottom-nav">
+    <a href="index.html" class="bnav-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>홈</span>
+    </a>
+    <a href="#comments" class="bnav-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      <span>댓글</span>
+    </a>
+    <button class="bnav-item" onclick="doShare()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      <span>공유</span>
+    </button>
+    <a href="admin/login.html" class="bnav-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      <span>관리자</span>
+    </a>
+  </nav>
+
+  <!-- Auth Modal -->
+  <div id="auth-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.55);align-items:center;justify-content:center;padding:20px">
+    <div style="background:#fff;border-radius:14px;width:100%;max-width:400px;padding:32px 28px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+      <button onclick="closeAuthModal()" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:#888;line-height:1">✕</button>
+      <div id="modal-login">
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:4px">로그인</h2>
+        <p style="font-size:13px;color:var(--text3);margin-bottom:20px">밴쿠버 중앙일보에 오신 걸 환영합니다</p>
+        <div style="margin-bottom:12px"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">이메일</label><input id="li-email" type="email" placeholder="email@example.com" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;font-family:inherit;box-sizing:border-box" onfocus="this.style.borderColor='var(--brand)'" onblur="this.style.borderColor='var(--border)'"></div>
+        <div style="margin-bottom:18px"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">비밀번호</label><input id="li-pw" type="password" placeholder="••••••••" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;font-family:inherit;box-sizing:border-box" onfocus="this.style.borderColor='var(--brand)'" onblur="this.style.borderColor='var(--border)'" onkeydown="if(event.key==='Enter')submitLogin()"></div>
+        <p id="li-err" style="font-size:13px;color:#c00;margin-bottom:12px;display:none"></p>
+        <button onclick="submitLogin()" style="width:100%;background:var(--brand);color:#fff;border:none;padding:12px;border-radius:8px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer">로그인</button>
+        <p style="text-align:center;font-size:13px;color:var(--text3);margin-top:16px">계정이 없으신가요? <a href="#" onclick="switchModal('register');return false" style="color:var(--brand);font-weight:600">회원가입</a></p>
+      </div>
+      <div id="modal-register" style="display:none">
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:4px">회원가입</h2>
+        <p style="font-size:13px;color:var(--text3);margin-bottom:20px">무료로 가입하고 댓글을 달아보세요</p>
+        <div style="margin-bottom:12px"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">이름 (닉네임)</label><input id="rg-name" type="text" placeholder="홍길동" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;font-family:inherit;box-sizing:border-box" onfocus="this.style.borderColor='var(--brand)'" onblur="this.style.borderColor='var(--border)'"></div>
+        <div style="margin-bottom:12px"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">이메일</label><input id="rg-email" type="email" placeholder="email@example.com" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;font-family:inherit;box-sizing:border-box" onfocus="this.style.borderColor='var(--brand)'" onblur="this.style.borderColor='var(--border)'"></div>
+        <div style="margin-bottom:18px"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">비밀번호</label><input id="rg-pw" type="password" placeholder="8자 이상" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;font-family:inherit;box-sizing:border-box" onfocus="this.style.borderColor='var(--brand)'" onblur="this.style.borderColor='var(--border)'" onkeydown="if(event.key==='Enter')submitRegister()"></div>
+        <p id="rg-err" style="font-size:13px;color:#c00;margin-bottom:12px;display:none"></p>
+        <button onclick="submitRegister()" style="width:100%;background:var(--brand);color:#fff;border:none;padding:12px;border-radius:8px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer">가입하기</button>
+        <p style="text-align:center;font-size:13px;color:var(--text3);margin-top:16px">이미 계정이 있으신가요? <a href="#" onclick="switchModal('login');return false" style="color:var(--brand);font-weight:600">로그인</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script>
+    const params  = new URLSearchParams(window.location.search);
+    const id      = params.get('id');
+    const article = id ? VJ.getArticle(id) : null;
+
+    const GRADS = [
+      'linear-gradient(135deg,#1c3f5c,#2d7fa5)',
+      'linear-gradient(135deg,#1a5c3c,#2d9e70)',
+      'linear-gradient(135deg,#5c2a1a,#a05030)',
+      'linear-gradient(135deg,#1a2c5c,#2d5aa0)',
+      'linear-gradient(135deg,#3c1a5c,#7030a0)',
+      'linear-gradient(135deg,#1a4c4c,#2d8c8c)'
+    ];
+    function gradFor(sid) {
+      const n = String(sid).split('').reduce((s,c)=>s+c.charCodeAt(0),0);
+      return GRADS[n % GRADS.length];
+    }
+
+    function renderArticle() {
+      const wrap = document.getElementById('post-wrap');
+      if (!article) {
+        wrap.innerHTML = `<div style="padding:80px 20px;text-align:center;color:var(--text3);font-size:16px">기사를 찾을 수 없습니다. <a href="index.html" style="color:var(--brand)">홈으로 돌아가기</a></div>`;
+        return;
+      }
+
+      document.title = article.title + ' — 밴쿠버 중앙일보';
+      // OG meta
+      document.getElementById('og-title').content = article.title;
+      document.getElementById('og-desc').content  = article.subtitle || '';
+      if (article.imageUrl) document.getElementById('og-img').content = article.imageUrl;
+      const v       = VJ.getVote(id);
+      const color   = VJ.getCatColor(article.category);
+      const dateStr = new Date(article.createdAt).toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric' });
+
+      wrap.innerHTML = `
+        <article class="post-main">
+          ${article.imageUrl
+            ? `<img src="${VJ.escapeHtml(article.imageUrl)}" alt="${VJ.escapeHtml(article.title)}" class="post-hero-img">`
+            : `<div class="post-hero-no-img" style="background:${gradFor(id)}"></div>`}
+
+          <div class="post-inner">
+            <span class="post-cat-badge" style="background:${color}">${VJ.escapeHtml(article.category)}</span>
+            <h1 class="post-title">${VJ.escapeHtml(article.title)}</h1>
+            ${article.subtitle ? `<p class="post-subtitle">${VJ.escapeHtml(article.subtitle)}</p>` : ''}
+            <div class="post-meta">
+              <span>${dateStr}</span>
+              <span class="meta-dot">·</span>
+              <span>${VJ.escapeHtml(article.author)}</span>
+              <span class="meta-dot">·</span>
+              <span class="read-time">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                ${VJ.readingTime(article.content)} 소요
+              </span>
+              ${article.updatedAt && article.updatedAt !== article.createdAt ? `<span class="meta-dot">·</span><span style="color:#aaa">수정됨</span>` : ''}
+            </div>
+
+            <div class="post-share-row">
+              <button class="share-btn" onclick="copyLink()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                <span id="copy-btn-text">링크 복사</span>
+              </button>
+              <button class="share-btn kakao" onclick="shareKakao()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.48 3 2 6.72 2 11.28c0 2.88 1.68 5.43 4.24 6.97l-.96 3.56 4.07-2.68c.86.18 1.74.27 2.65.27 5.52 0 10-3.72 10-8.28S17.52 3 12 3z"/></svg>
+                카카오 공유
+              </button>
+              <button class="share-btn" onclick="doShare()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                공유하기
+              </button>
+            </div>
+
+            <div class="ad-slot" style="margin-bottom:28px;border-radius:8px;border:1px solid var(--border)">
+              <p class="ad-label">광고</p>
+              <div class="ad-mock">Google AdSense — 본문 상단</div>
+            </div>
+
+            <div class="post-body">${VJ.renderContent(article.content)}</div>
+
+            <div class="ad-slot" style="margin-bottom:28px;border-radius:8px;border:1px solid var(--border)">
+              <p class="ad-label">광고</p>
+              <div class="ad-mock">Google AdSense — 본문 하단</div>
+            </div>
+
+            <!-- Reactions — clean pill style -->
+            <div class="post-reactions">
+              <span class="react-label">이 기사가 유용했나요?</span>
+              <button class="react-pill ${v.userVote==='up'?'active-up':''}" id="pill-up" onclick="doVote('up')">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z"/><path d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></svg>
+                좋아요&nbsp;<span class="pill-count" id="up-count">${v.up||0}</span>
+              </button>
+              <button class="react-pill ${v.userVote==='down'?'active-down':''}" id="pill-down" onclick="doVote('down')">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/></svg>
+                별로예요&nbsp;<span class="pill-count" id="down-count">${v.down||0}</span>
+              </button>
+              <button class="react-pill-share" onclick="doShare()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                공유하기
+              </button>
+            </div>
+
+            <!-- Author -->
+            <div class="post-author-box">
+              <div class="author-avatar">${VJ.escapeHtml(article.author.charAt(0))}</div>
+              <div>
+                <div class="author-name">${VJ.escapeHtml(article.author)}</div>
+                <div class="author-role">밴쿠버 중앙일보</div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <aside class="post-sidebar">
+          <div class="sidebar-widget sub-widget">
+            <div class="widget-inner">
+              <p class="sub-title">광고 없이 읽기</p>
+              <p class="sub-price">월 <strong>$7.99</strong> · 언제든 취소</p>
+              <a href="#subscribe" class="btn-sub">구독 시작하기</a>
+            </div>
+          </div>
+          <div class="sidebar-widget" style="padding:14px">
+            <p class="ad-label" style="text-align:center">광고</p>
+            <div class="ad-mock" style="height:240px">사이드바 (300×250)</div>
+          </div>
+          <div class="sidebar-widget">
+            <div class="widget-inner">
+              <h3 class="widget-title"><span class="accent-bar"></span>다른 기사</h3>
+              <div id="sidebar-popular"></div>
+            </div>
+          </div>
+        </aside>`;
+
+      renderSidebarPopular();
+    }
+
+    function renderSidebarPopular() {
+      const el = document.getElementById('sidebar-popular');
+      if (!el) return;
+      el.innerHTML = VJ.getArticles().filter(a=>a.id!==id).slice(0,5).map((a,i)=>`
+        <a href="article.html?id=${VJ.escapeHtml(a.id)}" class="sidebar-art">
+          <span class="s-num">${i+1}</span>
+          <div class="s-body">
+            <span class="s-cat" style="color:${VJ.getCatColor(a.category)}">${VJ.escapeHtml(a.category)}</span>
+            <span class="s-title">${VJ.escapeHtml(a.title)}</span>
+          </div>
+        </a>`).join('');
+    }
+
+    function renderRelated() {
+      if (!article) return;
+      const rel = VJ.getArticles().filter(a=>a.id!==id&&a.category===article.category).slice(0,3);
+      if (!rel.length) return;
+      const wrap = document.getElementById('related-wrap');
+      wrap.style.display = 'block';
+      document.getElementById('related-list').innerHTML = rel.map(a=>`
+        <a href="article.html?id=${VJ.escapeHtml(a.id)}" class="related-card">
+          <div class="related-thumb">
+            ${a.imageUrl
+              ? `<img src="${VJ.escapeHtml(a.imageUrl)}" alt="${VJ.escapeHtml(a.title)}">`
+              : `<div class="related-thumb-no" style="background:${gradFor(a.id)}"></div>`}
+          </div>
+          <span class="related-cat" style="color:${VJ.getCatColor(a.category)}">${VJ.escapeHtml(a.category)}</span>
+          <span class="related-title">${VJ.escapeHtml(a.title)}</span>
+          <span class="related-date">${VJ.timeAgo(a.createdAt)}</span>
+        </a>`).join('');
+    }
+
+    function renderComments() {
+      if (!article) return;
+      const comments = VJ.getComments(id);
+      document.getElementById('comment-count').textContent = comments.length;
+      const list = document.getElementById('comment-list');
+      if (!comments.length) { list.innerHTML=`<p class="no-comments">첫 번째 댓글을 남겨보세요!</p>`; return; }
+      list.innerHTML = comments.map(c=>`
+        <div class="comment-item">
+          <div class="comment-header">
+            <span class="comment-author">${VJ.escapeHtml(c.author)}</span>
+            <span class="comment-date">${VJ.timeAgo(c.createdAt)}</span>
+          </div>
+          <p class="comment-text">${VJ.escapeHtml(c.text)}</p>
+        </div>`).join('');
+    }
+
+    function submitComment() {
+      const nameEl = document.getElementById('comment-name');
+      const textEl = document.getElementById('comment-text');
+      const text   = textEl.value.trim();
+      if (!text) { textEl.focus(); return; }
+      VJ.addComment(id, nameEl.value.trim()||'익명', text);
+      textEl.value = ''; nameEl.value = '';
+      renderComments();
+    }
+
+    function doVote(type) {
+      const v = VJ.vote(id, type);
+      document.getElementById('up-count').textContent   = v.up   || 0;
+      document.getElementById('down-count').textContent = v.down || 0;
+      document.getElementById('pill-up').className   = 'react-pill' + (v.userVote==='up'  ? ' active-up'  : '');
+      document.getElementById('pill-down').className = 'react-pill' + (v.userVote==='down'? ' active-down': '');
+    }
+
+    function doShare() {
+      if (navigator.share && article) {
+        navigator.share({ title: article.title, url: window.location.href }).catch(()=>{});
+      } else { copyLink(); }
+    }
+
+    function copyLink() {
+      const btn = document.getElementById('copy-btn-text');
+      navigator.clipboard && navigator.clipboard.writeText(window.location.href).then(()=>{
+        if (btn) { btn.textContent='복사됐어요!'; setTimeout(()=>{ btn.textContent='링크 복사'; }, 2200); }
+      }).catch(()=> alert('링크: '+window.location.href));
+    }
+
+    function shareKakao() {
+      alert('카카오 SDK를 연동하면 카카오로 공유됩니다.\n지금은 링크 복사를 이용해주세요.');
+    }
+
+    // Ticker
+    const allArt = VJ.getArticles();
+    const tickerEl = document.getElementById('ticker-text');
+    if (allArt.length) tickerEl.textContent = allArt.slice(0,6).map(a=>a.title).join('   ·   ');
+
+    renderArticle();
+    renderRelated();
+    renderComments();
+
+    document.getElementById('comment-text').addEventListener('keydown', function(e) {
+      if (e.key==='Enter' && e.ctrlKey) submitComment();
+    });
+
+    /* ---- User Auth UI ---- */
+    function updateUserNav() {
+      const u = VJ.getCurrentUser();
+      const nav = document.getElementById('user-nav');
+      const loggedIn = document.getElementById('user-nav-loggedin');
+      nav.style.display = u ? 'none' : 'flex';
+      nav.style.gap = '8px';
+      nav.style.alignItems = 'center';
+      loggedIn.style.display = u ? 'flex' : 'none';
+      if (u) document.getElementById('user-greeting').textContent = u.name + '님';
+      // Pre-fill comment name if logged in
+      const cnInput = document.getElementById('comment-name');
+      if (cnInput && u) cnInput.value = u.name;
+    }
+    function openAuthModal(mode) { switchModal(mode); document.getElementById('auth-modal').style.display='flex'; }
+    function closeAuthModal() {
+      document.getElementById('auth-modal').style.display='none';
+      ['li-err','rg-err'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';});
+    }
+    function switchModal(mode) {
+      document.getElementById('modal-login').style.display    = mode==='login'    ? 'block':'none';
+      document.getElementById('modal-register').style.display = mode==='register' ? 'block':'none';
+    }
+    function submitLogin() {
+      const email=document.getElementById('li-email').value.trim();
+      const pw=document.getElementById('li-pw').value;
+      const err=document.getElementById('li-err');
+      if(!email||!pw){err.textContent='이메일과 비밀번호를 입력해주세요.';err.style.display='block';return;}
+      const r=VJ.userLogin(email,pw);
+      if(!r.ok){err.textContent=r.msg;err.style.display='block';return;}
+      closeAuthModal(); updateUserNav();
+    }
+    function submitRegister() {
+      const name=document.getElementById('rg-name').value.trim();
+      const email=document.getElementById('rg-email').value.trim();
+      const pw=document.getElementById('rg-pw').value;
+      const err=document.getElementById('rg-err');
+      if(!name||!email||!pw){err.textContent='모든 항목을 입력해주세요.';err.style.display='block';return;}
+      if(pw.length<8){err.textContent='비밀번호는 8자 이상이어야 합니다.';err.style.display='block';return;}
+      const r=VJ.userRegister(name,email,pw);
+      if(!r.ok){err.textContent=r.msg;err.style.display='block';return;}
+      closeAuthModal(); updateUserNav();
+    }
+    function doUserLogout() { VJ.userLogout(); updateUserNav(); }
+    document.getElementById('auth-modal').addEventListener('click',function(e){if(e.target===this)closeAuthModal();});
+    updateUserNav();
+  </script>
+</body>
+</html>

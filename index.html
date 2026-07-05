@@ -34,9 +34,9 @@
         </div>
         <div id="user-nav-loggedin" style="display:none;align-items:center;gap:10px">
           <span id="user-greeting" style="font-size:13px;color:var(--text2)"></span>
+          <a id="admin-link" href="admin/dashboard.html" class="btn-primary" style="display:none;font-size:12px">대시보드</a>
           <button class="btn-ghost" onclick="doUserLogout()">로그아웃</button>
         </div>
-        <a href="admin/login.html" class="btn-ghost" style="font-size:12px;opacity:.6">관리자</a>
       </div>
     </div>
     <nav class="cat-nav" aria-label="카테고리">
@@ -136,7 +136,6 @@
           <a href="about.html">소개</a>
           <a href="contact.html">광고문의</a>
           <a href="privacy.html">개인정보처리방침</a>
-          <a href="admin/login.html">관리자</a>
         </nav>
       </div>
       <p class="footer-copy">© 2026 밴쿠버 중앙일보. All rights reserved.</p>
@@ -230,6 +229,10 @@
     </div>
   </div>
 
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
   <script src="js/data.js"></script>
   <script>
     const PER_PAGE = 6;
@@ -264,7 +267,6 @@
       const mainColor = VJ.getCatColor(main.category);
 
       document.getElementById('hero-wrap').innerHTML = `
-        <div class="hero-section">
           <div class="hero-grid">
 
             <!-- Main feature -->
@@ -301,8 +303,7 @@
               <a href="article.html?id=${VJ.escapeHtml(a.id)}" class="hero-link" aria-label="${VJ.escapeHtml(a.title)}"></a>
             </div>`).join('')}
 
-          </div>
-        </div>`;
+          </div>`;
     }
 
     /* ---- Search ---- */
@@ -455,6 +456,7 @@
       document.getElementById('user-nav').style.alignItems       = 'center';
       document.getElementById('user-nav-loggedin').style.display = u ? 'flex' : 'none';
       if (u) document.getElementById('user-greeting').textContent = u.name + '님';
+      document.getElementById('admin-link').style.display = (u && VJ.isAdmin()) ? 'inline-flex' : 'none';
     }
     function openAuthModal(mode) {
       switchModal(mode);
@@ -469,30 +471,31 @@
       document.getElementById('modal-login').style.display    = mode==='login'    ? 'block' : 'none';
       document.getElementById('modal-register').style.display = mode==='register' ? 'block' : 'none';
     }
-    function submitLogin() {
+    async function submitLogin() {
       const email = document.getElementById('li-email').value.trim();
       const pw    = document.getElementById('li-pw').value;
       const err   = document.getElementById('li-err');
       if (!email||!pw) { err.textContent='이메일과 비밀번호를 입력해주세요.'; err.style.display='block'; return; }
-      const r = VJ.userLogin(email, pw);
+      const r = await VJ.userLogin(email, pw);
       if (!r.ok) { err.textContent=r.msg; err.style.display='block'; return; }
       closeAuthModal();
       updateUserNav();
     }
-    function submitRegister() {
+    async function submitRegister() {
       const name  = document.getElementById('rg-name').value.trim();
       const email = document.getElementById('rg-email').value.trim();
       const pw    = document.getElementById('rg-pw').value;
       const err   = document.getElementById('rg-err');
       if (!name||!email||!pw) { err.textContent='모든 항목을 입력해주세요.'; err.style.display='block'; return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { err.textContent='올바른 이메일 형식이 아닙니다.'; err.style.display='block'; return; }
       if (pw.length < 8) { err.textContent='비밀번호는 8자 이상이어야 합니다.'; err.style.display='block'; return; }
-      const r = VJ.userRegister(name, email, pw);
+      const r = await VJ.userRegister(name, email, pw);
       if (!r.ok) { err.textContent=r.msg; err.style.display='block'; return; }
       closeAuthModal();
       updateUserNav();
     }
-    function doUserLogout() {
-      VJ.userLogout();
+    async function doUserLogout() {
+      await VJ.userLogout();
       updateUserNav();
     }
     document.getElementById('auth-modal').addEventListener('click', function(e){
@@ -500,14 +503,14 @@
     });
 
     /* ---- Init ---- */
-    (function init() {
-      const all = VJ.getArticles();
+    VJ.onAuth(updateUserNav);
+    (async function init() {
+      const all = await VJ.loadArticles();
       renderTicker(all);
       renderHero(all);
       renderFeed(all);
       renderPopular(all);
       renderTags();
-      updateUserNav();
     })();
   </script>
 </body>

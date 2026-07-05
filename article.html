@@ -54,6 +54,7 @@
         </div>
         <div id="user-nav-loggedin" style="display:none;align-items:center;gap:10px">
           <span id="user-greeting" style="font-size:13px;color:var(--text2)"></span>
+          <a id="admin-link" href="admin/dashboard.html" class="btn-primary" style="display:none;font-size:12px">대시보드</a>
           <button class="btn-ghost" onclick="doUserLogout()">로그아웃</button>
         </div>
       </div>
@@ -108,9 +109,9 @@
         </div>
         <nav class="footer-nav">
           <a href="index.html">홈</a>
-          <a href="#">소개</a>
-          <a href="#">광고문의</a>
-          <a href="admin/login.html">관리자</a>
+          <a href="about.html">소개</a>
+          <a href="contact.html">광고문의</a>
+          <a href="privacy.html">개인정보처리방침</a>
         </nav>
       </div>
       <p class="footer-copy">© 2026 밴쿠버 중앙일보. All rights reserved.</p>
@@ -131,9 +132,9 @@
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
       <span>공유</span>
     </button>
-    <a href="admin/login.html" class="bnav-item">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-      <span>관리자</span>
+    <a href="#subscribe" class="bnav-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>구독</span>
     </a>
   </nav>
 
@@ -163,11 +164,15 @@
     </div>
   </div>
 
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
   <script src="js/data.js"></script>
   <script>
     const params  = new URLSearchParams(window.location.search);
     const id      = params.get('id');
-    const article = id ? VJ.getArticle(id) : null;
+    let article = null;
 
     const GRADS = [
       'linear-gradient(135deg,#1c3f5c,#2d7fa5)',
@@ -224,10 +229,6 @@
               <button class="share-btn" onclick="copyLink()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
                 <span id="copy-btn-text">링크 복사</span>
-              </button>
-              <button class="share-btn kakao" onclick="shareKakao()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.48 3 2 6.72 2 11.28c0 2.88 1.68 5.43 4.24 6.97l-.96 3.56 4.07-2.68c.86.18 1.74.27 2.65.27 5.52 0 10-3.72 10-8.28S17.52 3 12 3z"/></svg>
-                카카오 공유
               </button>
               <button class="share-btn" onclick="doShare()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
@@ -330,9 +331,9 @@
         </a>`).join('');
     }
 
-    function renderComments() {
+    async function renderComments() {
       if (!article) return;
-      const comments = VJ.getComments(id);
+      const comments = await VJ.getComments(id);
       document.getElementById('comment-count').textContent = comments.length;
       const list = document.getElementById('comment-list');
       if (!comments.length) { list.innerHTML=`<p class="no-comments">첫 번째 댓글을 남겨보세요!</p>`; return; }
@@ -346,13 +347,16 @@
         </div>`).join('');
     }
 
-    function submitComment() {
+    async function submitComment() {
+      const u = VJ.getCurrentUser();
+      if (!u) { openAuthModal('login'); return; }
       const nameEl = document.getElementById('comment-name');
       const textEl = document.getElementById('comment-text');
       const text   = textEl.value.trim();
       if (!text) { textEl.focus(); return; }
-      VJ.addComment(id, nameEl.value.trim()||'익명', text);
-      textEl.value = ''; nameEl.value = '';
+      const r = await VJ.addComment(id, nameEl.value.trim() || u.name || '익명', text);
+      if (!r.ok) { alert(r.msg); return; }
+      textEl.value = '';
       renderComments();
     }
 
@@ -377,18 +381,17 @@
       }).catch(()=> alert('링크: '+window.location.href));
     }
 
-    function shareKakao() {
-      alert('카카오 SDK를 연동하면 카카오로 공유됩니다.\n지금은 링크 복사를 이용해주세요.');
-    }
 
-    // Ticker
-    const allArt = VJ.getArticles();
-    const tickerEl = document.getElementById('ticker-text');
-    if (allArt.length) tickerEl.textContent = allArt.slice(0,6).map(a=>a.title).join('   ·   ');
-
-    renderArticle();
-    renderRelated();
-    renderComments();
+    (async function init() {
+      await VJ.loadArticles();
+      article = VJ.getArticle(id);
+      const allArt = VJ.getArticles();
+      const tickerEl = document.getElementById('ticker-text');
+      if (allArt.length) tickerEl.textContent = allArt.slice(0,6).map(a=>a.title).join('   ·   ');
+      renderArticle();
+      renderRelated();
+      renderComments();
+    })();
 
     document.getElementById('comment-text').addEventListener('keydown', function(e) {
       if (e.key==='Enter' && e.ctrlKey) submitComment();
@@ -404,6 +407,7 @@
       nav.style.alignItems = 'center';
       loggedIn.style.display = u ? 'flex' : 'none';
       if (u) document.getElementById('user-greeting').textContent = u.name + '님';
+      document.getElementById('admin-link').style.display = (u && VJ.isAdmin()) ? 'inline-flex' : 'none';
       // Pre-fill comment name if logged in
       const cnInput = document.getElementById('comment-name');
       if (cnInput && u) cnInput.value = u.name;
@@ -417,29 +421,30 @@
       document.getElementById('modal-login').style.display    = mode==='login'    ? 'block':'none';
       document.getElementById('modal-register').style.display = mode==='register' ? 'block':'none';
     }
-    function submitLogin() {
+    async function submitLogin() {
       const email=document.getElementById('li-email').value.trim();
       const pw=document.getElementById('li-pw').value;
       const err=document.getElementById('li-err');
       if(!email||!pw){err.textContent='이메일과 비밀번호를 입력해주세요.';err.style.display='block';return;}
-      const r=VJ.userLogin(email,pw);
+      const r=await VJ.userLogin(email,pw);
       if(!r.ok){err.textContent=r.msg;err.style.display='block';return;}
       closeAuthModal(); updateUserNav();
     }
-    function submitRegister() {
+    async function submitRegister() {
       const name=document.getElementById('rg-name').value.trim();
       const email=document.getElementById('rg-email').value.trim();
       const pw=document.getElementById('rg-pw').value;
       const err=document.getElementById('rg-err');
       if(!name||!email||!pw){err.textContent='모든 항목을 입력해주세요.';err.style.display='block';return;}
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){err.textContent='올바른 이메일 형식이 아닙니다.';err.style.display='block';return;}
       if(pw.length<8){err.textContent='비밀번호는 8자 이상이어야 합니다.';err.style.display='block';return;}
-      const r=VJ.userRegister(name,email,pw);
+      const r=await VJ.userRegister(name,email,pw);
       if(!r.ok){err.textContent=r.msg;err.style.display='block';return;}
       closeAuthModal(); updateUserNav();
     }
-    function doUserLogout() { VJ.userLogout(); updateUserNav(); }
+    async function doUserLogout() { await VJ.userLogout(); updateUserNav(); }
     document.getElementById('auth-modal').addEventListener('click',function(e){if(e.target===this)closeAuthModal();});
-    updateUserNav();
+    VJ.onAuth(updateUserNav);
   </script>
 </body>
 </html>

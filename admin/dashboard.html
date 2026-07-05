@@ -254,7 +254,7 @@
     <div class="dash-section">
       <div class="dash-section-hdr">
         <div class="dash-section-title"><span class="dot"></span>기사 목록</div>
-        <button class="btn-reseed" onclick="confirmReseed()">샘플 초기화</button>
+        <button class="btn-reseed" onclick="confirmReseed()">샘플 기사 업로드</button>
       </div>
 
       <div class="list-toolbar">
@@ -291,9 +291,21 @@
   </div><!-- /dash-body -->
 
   <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="../js/firebase-config.js"></script>
   <script src="../js/data.js"></script>
   <script>
-    VJ.requireAdmin();
+    let dashReady = false;
+    VJ.onAuth(async (user) => {
+      if (!user || !VJ.isAdmin()) { window.location.replace('../index.html'); return; }
+      if (dashReady) return;
+      dashReady = true;
+      await VJ.loadArticles();
+      renderStats();
+      renderList();
+    });
 
     const PER   = 15; // articles per page in admin list
     let listPage = 1;
@@ -462,7 +474,7 @@
     }
 
     /* ---- Submit / Publish ---- */
-    function submitArticle() {
+    async function submitArticle() {
       const title    = document.getElementById('f-title').value.trim();
       const subtitle = document.getElementById('f-subtitle').value.trim();
       const author   = document.getElementById('f-author').value.trim();
@@ -476,13 +488,6 @@
       if (!category) { alert('카테고리를 선택해주세요.'); document.getElementById('f-category').focus(); return; }
       if (isEmpty)   { alert('본문을 입력해주세요.'); quill.focus(); return; }
 
-      // If featured, unfeatured others
-      if (featured) {
-        VJ.getArticles().forEach(a=>{
-          if(a.featured&&a.id!==editingId){ a.featured=false; VJ.saveArticle(a); }
-        });
-      }
-
       const article = {
         id:        editingId || Date.now().toString(),
         title, subtitle,
@@ -492,7 +497,19 @@
         updatedAt: new Date().toISOString()
       };
 
-      VJ.saveArticle(article);
+      try {
+        // If featured, unfeature others
+        if (featured) {
+          for (const a of VJ.getArticles()) {
+            if (a.featured && a.id !== editingId) { a.featured = false; await VJ.saveArticle(a); }
+          }
+        }
+        await VJ.saveArticle(article);
+      } catch (e) {
+        console.error(e);
+        alert('저장에 실패했습니다. 로그인 상태와 네트워크를 확인해주세요.');
+        return;
+      }
       const isEdit = !!editingId;
       resetForm();
 
@@ -507,28 +524,27 @@
     }
 
     /* ---- Delete ---- */
-    function deleteArt(id, btn) {
+    async function deleteArt(id, btn) {
       const a = VJ.getArticle(id);
       if (!a) return;
       if (!confirm(`"${a.title}"\n\n이 기사를 삭제할까요? 되돌릴 수 없습니다.`)) return;
       btn.disabled=true; btn.textContent='…';
-      VJ.deleteArticle(id);
+      try { await VJ.deleteArticle(id); }
+      catch (e) { console.error(e); alert('삭제에 실패했습니다.'); btn.disabled=false; btn.textContent='삭제'; return; }
       if(editingId===id) cancelEdit();
       renderStats(); renderList();
     }
 
-    /* ---- Reseed ---- */
-    function confirmReseed() {
-      if(!confirm('모든 기사를 삭제하고 샘플 기사로 초기화하시겠습니까?')) return;
-      VJ.clearAndReseed(); renderStats(); renderList();
+    /* ---- Seed samples (empty DB only) ---- */
+    async function confirmReseed() {
+      if(!confirm('샘플 기사 25개를 업로드할까요? (기사가 하나도 없을 때만 동작합니다)')) return;
+      const r = await VJ.seedSamples();
+      if (!r.ok) { alert(r.msg); return; }
+      renderStats(); renderList();
     }
 
     /* ---- Logout ---- */
-    function doLogout() { VJ.logout(); window.location.href='login.html'; }
-
-    /* ---- Init ---- */
-    renderStats();
-    renderList();
+    async function doLogout() { await VJ.userLogout(); window.location.href='../index.html'; }
   </script>
 </body>
 </html>

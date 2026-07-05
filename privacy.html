@@ -126,18 +126,22 @@
           <a href="about.html">소개</a>
           <a href="contact.html">광고문의</a>
           <a href="privacy.html">개인정보처리방침</a>
-          <a href="admin/login.html">관리자</a>
         </nav>
       </div>
       <p class="footer-copy">© 2026 밴쿠버 중앙일보. All rights reserved.</p>
     </div>
   </footer>
 
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
   <script src="js/data.js"></script>
   <script>
-    const all = VJ.getArticles();
-    const el  = document.getElementById('ticker-text');
-    if (all.length) el.textContent = all.slice(0,5).map(a=>a.title).join('   ·   ');
+    VJ.loadArticles().then(all => {
+      const el = document.getElementById('ticker-text');
+      if (all.length) el.textContent = all.slice(0,5).map(a=>a.title).join('   ·   ');
+    });
   </script>
 </body>
 </html>

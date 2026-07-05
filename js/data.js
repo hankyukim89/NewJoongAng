@@ -2,13 +2,23 @@
    밴쿠버 중앙일보 — data.js
    ============================================= */
 const VJ = (() => {
-  const ARTICLES_KEY  = 'vj_articles';
-  const AUTH_KEY      = 'vj_admin_session';
-  const VOTES_KEY     = 'vj_votes';
-  const COMMENTS_KEY  = 'vj_comments';
-  const USERS_KEY     = 'vj_users';
-  const USER_SESS_KEY = 'vj_user_session';
-  const ADMIN_PASS    = 'admin123';
+  const VOTES_KEY = 'vj_votes';
+
+  /* ---- Firebase init ---- */
+  const OFFLINE = typeof firebase === 'undefined'
+               || !window.FIREBASE_CONFIG
+               || String(window.FIREBASE_CONFIG.apiKey || '').indexOf('PASTE') !== -1;
+
+  let db = null, auth = null;
+  if (!OFFLINE) {
+    firebase.initializeApp(window.FIREBASE_CONFIG);
+    db   = firebase.firestore();
+    auth = firebase.auth();
+  } else {
+    console.warn('[VJ] Firebase 미설정 — 샘플 기사 읽기 전용 모드로 동작합니다. js/firebase-config.js 를 설정하세요.');
+  }
+
+  const ADMIN_EMAILS = (window.ADMIN_EMAILS || []).map(e => String(e).toLowerCase());
 
   const CAT_COLORS = {
     '지역':  '#1A6B9A',
@@ -524,31 +534,45 @@ const VJ = (() => {
     }
   ];
 
-  /* ---- Articles ---- */
-  const DATA_VERSION = 'v3';
-  function getArticles() {
-    const raw = localStorage.getItem(ARTICLES_KEY);
-    const ver = localStorage.getItem('vj_version');
-    // Auto-reseed if no data or running old version
-    if (!raw || ver !== DATA_VERSION) {
-      seedArticles();
-      localStorage.setItem('vj_version', DATA_VERSION);
-      return getArticles();
+  /* ---- Articles (Firestore, cached) ---- */
+  let _articles = [];
+  const bySort = (a,b) => new Date(b.createdAt) - new Date(a.createdAt);
+
+  async function loadArticles() {
+    if (OFFLINE) { _articles = SAMPLE_ARTICLES.slice().sort(bySort); return _articles; }
+    try {
+      const snap = await db.collection('articles').get();
+      _articles = snap.docs.map(d => d.data()).sort(bySort);
+    } catch (e) {
+      console.error('[VJ] 기사 로드 실패:', e);
+      _articles = [];
     }
-    return JSON.parse(raw).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+    return _articles;
   }
-  function getArticle(id)  { return getArticles().find(a=>a.id===id)||null; }
-  function saveArticle(article) {
-    const list = getArticles();
-    const idx  = list.findIndex(a=>a.id===article.id);
-    if (idx>-1) list[idx]=article; else list.unshift(article);
-    localStorage.setItem(ARTICLES_KEY, JSON.stringify(list));
+  function getArticles() { return _articles.slice(); }
+  function getArticle(id) { return _articles.find(a => a.id === id) || null; }
+
+  async function saveArticle(article) {
+    if (OFFLINE) throw new Error('Firebase 미설정');
+    await db.collection('articles').doc(article.id).set(article);
+    await loadArticles();
   }
-  function deleteArticle(id) {
-    localStorage.setItem(ARTICLES_KEY, JSON.stringify(getArticles().filter(a=>a.id!==id)));
+  async function deleteArticle(id) {
+    if (OFFLINE) throw new Error('Firebase 미설정');
+    await db.collection('articles').doc(id).delete();
+    await loadArticles();
   }
-  function seedArticles()   { localStorage.setItem(ARTICLES_KEY, JSON.stringify(SAMPLE_ARTICLES)); }
-  function clearAndReseed() { localStorage.removeItem(ARTICLES_KEY); seedArticles(); }
+  /* 샘플 25개를 Firestore에 업로드 (비어있을 때 최초 1회용) */
+  async function seedSamples() {
+    if (OFFLINE) return { ok:false, msg:'Firebase 미설정' };
+    const snap = await db.collection('articles').limit(1).get();
+    if (!snap.empty) return { ok:false, msg:'이미 기사가 존재합니다. 샘플은 빈 DB에만 업로드됩니다.' };
+    const batch = db.batch();
+    SAMPLE_ARTICLES.forEach(a => batch.set(db.collection('articles').doc(a.id), a));
+    await batch.commit();
+    await loadArticles();
+    return { ok:true };
+  }
 
   /* Search across title, subtitle, author, body text */
   function searchArticles(query, cat) {
@@ -564,35 +588,50 @@ const VJ = (() => {
     );
   }
 
-  /* ---- Admin Auth ---- */
-  function isAdmin()  { return sessionStorage.getItem(AUTH_KEY)==='true'; }
-  function login(pw)  { if(pw===ADMIN_PASS){sessionStorage.setItem(AUTH_KEY,'true');return true;} return false; }
-  function logout()   { sessionStorage.removeItem(AUTH_KEY); }
-  function requireAdmin() { if(!isAdmin()) window.location.href='login.html'; }
-
-  /* ---- User Accounts ---- */
-  function getUsers() { return JSON.parse(localStorage.getItem(USERS_KEY)||'[]'); }
-  function saveUsers(u) { localStorage.setItem(USERS_KEY, JSON.stringify(u)); }
-
-  function userRegister(name, email, pw) {
-    const users = getUsers();
-    if (users.find(u=>u.email===email)) return {ok:false, msg:'이미 사용 중인 이메일입니다.'};
-    users.push({name, email, pw});
-    saveUsers(users);
-    sessionStorage.setItem(USER_SESS_KEY, JSON.stringify({name, email}));
-    return {ok:true};
-  }
-  function userLogin(email, pw) {
-    const u = getUsers().find(u=>u.email===email && u.pw===pw);
-    if (!u) return {ok:false, msg:'이메일 또는 비밀번호가 올바르지 않습니다.'};
-    sessionStorage.setItem(USER_SESS_KEY, JSON.stringify({name:u.name, email:u.email}));
-    return {ok:true, user:{name:u.name, email:u.email}};
-  }
-  function userLogout() { sessionStorage.removeItem(USER_SESS_KEY); }
+  /* ---- Auth (Firebase Auth) ---- */
   function getCurrentUser() {
-    const s = sessionStorage.getItem(USER_SESS_KEY);
-    return s ? JSON.parse(s) : null;
+    if (OFFLINE || !auth.currentUser) return null;
+    const u = auth.currentUser;
+    return { name: u.displayName || (u.email||'').split('@')[0], email: u.email };
   }
+  function isAdmin() {
+    const u = getCurrentUser();
+    return !!u && ADMIN_EMAILS.indexOf(String(u.email).toLowerCase()) > -1;
+  }
+  /* 로그인 상태가 바뀔 때마다 cb(user|null) 호출 */
+  function onAuth(cb) {
+    if (OFFLINE) { setTimeout(() => cb(null), 0); return; }
+    auth.onAuthStateChanged(() => cb(getCurrentUser()));
+  }
+
+  function authMsg(e) {
+    const code = (e && e.code) || '';
+    if (code.indexOf('email-already-in-use') > -1) return '이미 사용 중인 이메일입니다.';
+    if (code.indexOf('invalid-email') > -1)        return '올바른 이메일 형식이 아닙니다.';
+    if (code.indexOf('weak-password') > -1)        return '비밀번호는 8자 이상이어야 합니다.';
+    if (code.indexOf('too-many-requests') > -1)    return '시도가 너무 많습니다. 잠시 후 다시 시도해주세요.';
+    if (code.indexOf('network') > -1)              return '네트워크 오류입니다. 연결을 확인해주세요.';
+    if (code.indexOf('user-not-found') > -1 || code.indexOf('wrong-password') > -1 || code.indexOf('invalid-credential') > -1 || code.indexOf('invalid-login-credentials') > -1)
+      return '이메일 또는 비밀번호가 올바르지 않습니다.';
+    return '오류가 발생했습니다. 잠시 후 다시 시도해주세요. (' + code + ')';
+  }
+
+  async function userRegister(name, email, pw) {
+    if (OFFLINE) return { ok:false, msg:'서버 설정이 완료되지 않았습니다. (Firebase 미설정)' };
+    try {
+      const cred = await auth.createUserWithEmailAndPassword(email, pw);
+      await cred.user.updateProfile({ displayName: name });
+      return { ok:true };
+    } catch (e) { return { ok:false, msg: authMsg(e) }; }
+  }
+  async function userLogin(email, pw) {
+    if (OFFLINE) return { ok:false, msg:'서버 설정이 완료되지 않았습니다. (Firebase 미설정)' };
+    try {
+      await auth.signInWithEmailAndPassword(email, pw);
+      return { ok:true, user: getCurrentUser() };
+    } catch (e) { return { ok:false, msg: authMsg(e) }; }
+  }
+  async function userLogout() { if (!OFFLINE) await auth.signOut(); }
 
   /* ---- Votes ---- */
   function getVote(articleId) {
@@ -608,15 +647,28 @@ const VJ = (() => {
     return v;
   }
 
-  /* ---- Comments ---- */
-  function getComments(articleId) {
-    return ((JSON.parse(localStorage.getItem(COMMENTS_KEY)||'{}'))[articleId]||[]).slice().reverse();
+  /* ---- Comments (Firestore) ---- */
+  async function getComments(articleId) {
+    if (OFFLINE) return [];
+    try {
+      const snap = await db.collection('comments').where('articleId','==',articleId).get();
+      return snap.docs.map(d => Object.assign({ id: d.id }, d.data()))
+                      .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+    } catch (e) { console.error('[VJ] 댓글 로드 실패:', e); return []; }
   }
-  function addComment(articleId, author, text) {
-    const all=JSON.parse(localStorage.getItem(COMMENTS_KEY)||'{}');
-    if(!all[articleId])all[articleId]=[];
-    all[articleId].push({id:Date.now().toString(),author:author||'익명',text,createdAt:new Date().toISOString()});
-    localStorage.setItem(COMMENTS_KEY,JSON.stringify(all));
+  async function addComment(articleId, author, text) {
+    if (OFFLINE) return { ok:false, msg:'서버 설정이 완료되지 않았습니다.' };
+    if (!auth.currentUser) return { ok:false, msg:'댓글을 남기려면 로그인이 필요합니다.' };
+    try {
+      await db.collection('comments').add({
+        articleId,
+        author: author || '익명',
+        text: String(text).slice(0, 2000),
+        uid: auth.currentUser.uid,
+        createdAt: new Date().toISOString()
+      });
+      return { ok:true };
+    } catch (e) { console.error(e); return { ok:false, msg:'댓글 등록에 실패했습니다.' }; }
   }
 
   /* ---- Utils ---- */
@@ -648,8 +700,9 @@ const VJ = (() => {
   function nl2br(s) { return escapeHtml(s).replace(/\n/g,'<br>'); }
 
   return {
-    getArticles, getArticle, saveArticle, deleteArticle, clearAndReseed, searchArticles,
-    isAdmin, login, logout, requireAdmin,
+    isOffline: () => OFFLINE,
+    loadArticles, getArticles, getArticle, saveArticle, deleteArticle, seedSamples, searchArticles,
+    isAdmin, onAuth,
     userRegister, userLogin, userLogout, getCurrentUser,
     getVote, vote,
     getComments, addComment,
